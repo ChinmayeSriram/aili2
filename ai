@@ -1,0 +1,381 @@
+-------------------------------------------#8-puzzle using A*----------------------------------------------------
+
+class Node:
+    def __init__(self,data,level,fval):
+        self.data = data
+        self.level = level
+        self.fval = fval
+
+    def generate_child(self):
+        x,y = self.find(self.data,'_')
+        val_list = [[x,y-1],[x,y+1],[x-1,y],[x+1,y]]
+        children = []
+        for i in val_list:
+            child = self.shuffle(self.data,x,y,i[0],i[1])
+            if child is not None:
+                child_node = Node(child,self.level+1,0)
+                children.append(child_node)
+        return children
+
+    def shuffle(self,puz,x1,y1,x2,y2):
+        if x2 >= 0 and x2 < len(self.data) and y2 >= 0 and y2 < len(self.data):
+            temp_puz = []
+            temp_puz = self.copy(puz)
+            temp = temp_puz[x2][y2]
+            temp_puz[x2][y2] = temp_puz[x1][y1]
+            temp_puz[x1][y1] = temp
+            return temp_puz
+        else:
+            return None
+
+
+    def copy(self,root):
+        temp = []
+        for i in root:
+            t = []
+            for j in i:
+                t.append(j)
+            temp.append(t)
+        return temp
+
+    def find(self,puz,x):
+        for i in range(0,len(self.data)):
+            for j in range(0,len(self.data)):
+                if puz[i][j] == x:
+                    return i,j
+
+
+class Puzzle:
+    def __init__(self,size):
+        self.n = size
+        self.open = []
+        self.closed = []
+
+    def accept(self):
+        puz = []
+        for i in range(0,self.n):
+            temp = input().split(" ")
+            puz.append(temp)
+        return puz
+
+    def f(self,start,goal):
+        return self.h(start.data,goal)+start.level
+
+    def h(self,start,goal):
+        temp = 0
+        for i in range(0,self.n):
+            for j in range(0,self.n):
+                if start[i][j] != goal[i][j] and start[i][j] != '_':
+                    temp += 1
+        return temp
+
+
+    def process(self):
+        print("Enter the start state matrix \n")
+        start = self.accept()
+        print("Enter the goal state matrix \n")
+        goal = self.accept()
+
+        start = Node(start,0,0)
+        start.fval = self.f(start,goal)
+        """ Put the start node in the open list"""
+        self.open.append(start)
+        print("\n\n")
+        while True:
+            cur = self.open[0]
+            print("")
+            print("  | ")
+            print("  | ")
+            print(" \\\'/ \n")
+            for i in cur.data:
+                for j in i:
+                    print(j,end=" ")
+                print("")
+            """ If the difference between current and goal node is 0 we have reached the goal node"""
+            if(self.h(cur.data,goal) == 0):
+                break
+            for i in cur.generate_child():
+                i.fval = self.f(i,goal)
+                self.open.append(i)
+            self.closed.append(cur)
+            del self.open[0]
+
+            self.open.sort(key = lambda x:x.fval,reverse=False)
+
+
+puz = Puzzle(3)
+puz.process()
+
+
+
+---------------------------------------#Genetic Algorithm 8-Queen----------------------------------------------------------------------------------------
+
+import random
+
+# Genetic Algorithm parameters
+POPULATION_SIZE = 50
+MUTATION_RATE = 0.1
+MAX_GENERATIONS = 100
+
+# Generate a random board state
+def generate_board_state():
+    board_state = [random.randint(0, 7) for _ in range(8)]
+    return board_state
+
+# Calculate the fitness of a board state
+def calculate_fitness(board_state):
+    conflicts = 0
+    for i in range(8):
+        for j in range(i + 1, 8):
+            if board_state[i] == board_state[j] or abs(board_state[i] - board_state[j]) == j - i:
+                conflicts += 1
+    return 28 - conflicts  # Max fitness = 28 (no conflicts)
+
+# Select parents for crossover using tournament selection
+def tournament_selection(population):
+    tournament_size = 5
+    tournament = random.sample(population, tournament_size)
+    return max(tournament, key=lambda x: x[1])
+
+# Crossover operation (single-point crossover)
+def crossover(parent1, parent2):
+    crossover_point = random.randint(1, 7)
+    child = parent1[:crossover_point] + parent2[crossover_point:]
+    return child
+
+# Mutation operation (swap two positions)
+def mutate(board_state):
+    pos1, pos2 = random.sample(range(8), 2)
+    board_state[pos1], board_state[pos2] = board_state[pos2], board_state[pos1]
+    return board_state
+
+# Generate the initial population
+population = [(generate_board_state(), 0) for _ in range(POPULATION_SIZE)]
+
+# Main Genetic Algorithm loop
+for generation in range(MAX_GENERATIONS):
+    # Calculate fitness for each board state
+    population = [(board_state, calculate_fitness(board_state)) for board_state, _ in population]
+
+    # Check if solution is found
+    best_board_state = max(population, key=lambda x: x[1])[0]
+    if calculate_fitness(best_board_state) == 28:
+        print("Solution found in generation", generation)
+        break
+
+    # Create the next generation
+    new_population = []
+
+    # Elitism: Keep the best board state from the previous generation
+    new_population.append(max(population, key=lambda x: x[1]))
+
+    # Perform selection, crossover, and mutation
+    while len(new_population) < POPULATION_SIZE:
+        parent1 = tournament_selection(population)
+        parent2 = tournament_selection(population)
+        child = crossover(parent1[0], parent2[0])
+        if random.random() < MUTATION_RATE:
+            child = mutate(child)
+        new_population.append((child, 0))
+
+    # Update the population
+    population = new_population
+
+# Print the best solution
+print("Best solution:", best_board_state)
+
+
+
+---------------------------------------------------------------#cannibals----------------------------------------------------------------------------------------------
+from collections import deque
+def is_valid(state):
+    m, c, b = state
+    return (m >= 0 and c >= 0 and (m == 0 or m >= c) and
+            (3 - m) >= 0 and (3 - c) >= 0 and (3 - m == 0 or (3 - m) >= (3 - c)))
+def successors(state):
+    m, c, b = state
+    next_states = []
+    if b == 1:
+        next_states.extend([(m - 1, c, 0), (m, c - 1, 0), (m - 1, c - 1, 0), (m - 2, c, 0), (m, c - 2, 0)])
+    else:
+        next_states.extend([(m + 1, c, 1), (m, c + 1, 1), (m + 1, c + 1, 1), (m + 2, c, 1), (m, c + 2, 1)])
+    return [state for state in next_states if is_valid(state)]
+def breadth_first_search():
+    start_state = (3, 3, 1)
+    goal_state = (0, 0, 0)
+    queue = deque([(start_state, [start_state])])
+    visited = set()
+    while queue:
+        current_state, path = queue.popleft()
+        if current_state == goal_state:
+            return path
+        if current_state not in visited:
+            visited.add(current_state)
+            for next_state in successors(current_state):
+                queue.append((next_state, path + [next_state]))
+if __name__ == "__main__":
+    solution = breadth_first_search()
+    print("Solution:")
+    for state in solution:
+        print(state)
+
+
+------------------------------------#water jug------------------------------------------------------------------
+
+def pour_water(juga, jugb):
+  max1, max2, fill = 3, 19, 4
+  print("%d \t%d" % (juga, jugb))
+  if jugb==fill:
+  	return
+  elif jugb==max2:
+    pour_water(0, juga)
+  elif juga!=0 and jugb==0:
+  	pour_water(0, juga)
+  elif juga==fill:
+  	pour_water(juga, 0)
+  elif juga<max1:
+  	pour_water(max1, jugb)
+  elif juga<(max2-jugb):
+  	pour_water(0, (juga+jugb))
+  else:
+  	pour_water(juga-(max2-jugb), (max2-jugb)+jugb)
+
+print("Jug A \tJug B")
+pour_water(0,0)
+
+-----------------#mini max ----------------------------------------------------------------------------------------
+
+import math
+def minimax (curDepth, nodeIndex,maxTurn, scores,targetDepth):
+	if (curDepth == targetDepth): 
+		return scores[nodeIndex]
+	if (maxTurn):
+		return max(minimax(curDepth + 1, nodeIndex * 2, 
+					False, scores, targetDepth), 
+				minimax(curDepth + 1, nodeIndex * 2 + 1, 
+					False, scores, targetDepth))
+	else:
+		return min(minimax(curDepth + 1, nodeIndex * 2, 
+					True, scores, targetDepth), 
+				minimax(curDepth + 1, nodeIndex * 2 + 1, 
+					True, scores, targetDepth))
+scores = [3, 5, 2, 9, 12, 5, 23, 23]
+treeDepth = math.log(len(scores), 2)
+print("The optimal value is : ", end = "")
+print(minimax(0, 0, True, scores, treeDepth))
+
+
+--------------------------------------------------------# mini max (tic tac toe)-----------------------------
+
+import numpy as np
+import random
+from time import sleep
+def create_board():
+	return(np.array([[0, 0, 0],
+					[0, 0, 0],
+					[0, 0, 0]]))
+def possibilities(board):
+	l = []
+	for i in range(len(board)):
+		for j in range(len(board)):
+			if board[i][j] == 0:
+				l.append((i, j))
+	return(l)
+def random_place(board, player):
+	selection = possibilities(board)
+	current_loc = random.choice(selection)
+	board[current_loc] = player
+	return(board)
+def row_win(board, player):
+	for x in range(len(board)):
+		win = True
+		for y in range(len(board)):
+			if board[x, y] != player:
+				win = False
+				continue
+		if win == True:
+			return(win)
+	return(win)
+def col_win(board, player):
+	for x in range(len(board)):
+		win = True
+
+		for y in range(len(board)):
+			if board[y][x] != player:
+				win = False
+				continue
+
+		if win == True:
+			return(win)
+	return(win)
+def diag_win(board, player):
+	win = True
+	y = 0
+	for x in range(len(board)):
+		if board[x, x] != player:
+			win = False
+	if win:
+		return win
+	win = True
+	if win:
+		for x in range(len(board)):
+			y = len(board) - 1 - x
+			if board[x, y] != player:
+				win = False
+	return win
+def evaluate(board):
+	winner = 0
+	for player in [1, 2]:
+		if (row_win(board, player) or
+				col_win(board, player) or
+				diag_win(board, player)):
+			winner = player
+	if np.all(board != 0) and winner == 0:
+		winner = -1
+	return winner
+def play_game():
+	board, winner, counter = create_board(), 0, 1
+	print(board)
+	sleep(2)
+	while winner == 0:
+		for player in [1, 2]:
+			board = random_place(board, player)
+			print("Board after " + str(counter) + " move")
+			print(board)
+			sleep(2)
+			counter += 1
+			winner = evaluate(board)
+			if winner != 0:
+				break
+	return(winner)
+print("Winner is: " + str(play_game()))
+
+
+--------------------------------------------------------------apla - beta pruning--------------------------------------------------------------------------------------------------------
+MAX, MIN = 1000, -1000
+
+def minimax(depth, nodeIndex, maximizingPlayer, values, alpha, beta):
+    if depth == 3:
+        return values[nodeIndex]
+    if maximizingPlayer:
+        best = MIN
+        for i in range(0, 2):
+            val = minimax(depth + 1, nodeIndex * 2 + i, False, values, alpha, beta)
+            best = max(best, val)
+            alpha = max(alpha, best)
+            if beta <= alpha:
+                break
+        return best
+    else:
+        best = MAX
+        for i in range(0, 2):
+            val = minimax(depth + 1, nodeIndex * 2 + i, True, values, alpha, beta)
+            best = min(best, val)
+            beta = min(beta, best)
+            if beta <= alpha:
+                break
+        return best
+
+if __name__ == "__main__":
+    values = [3, 5, 6, 9, 1, 2, 0, -1]
+    print("The optimal value is :", minimax(0, 0, True, values, MIN, MAX))
